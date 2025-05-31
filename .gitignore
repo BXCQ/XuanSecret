@@ -1,0 +1,34 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temp files
+*.tmp
+*.temp
+*~
+
+# Build
+/build/
+/dist/
+
+# Node (if used)
+node_modules/
+package-lock.json
+yarn.lock
+
+# PHP
+vendor/
+composer.lock
+
+# Test files
+test-*.html
+*.test.html 
