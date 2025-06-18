@@ -38,8 +38,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function checkCommentStatus() {
-        // 检查是否已评论用户
-        const commentedFlag = document.cookie.indexOf('typecho_comment_author') !== -1;
+        // 检查是否已评论用户 - 改进检测逻辑
+        const commentedFlag = document.cookie.indexOf('typecho_comment_author') !== -1 || 
+                             document.cookie.indexOf('typecho_user_author') !== -1 ||
+                             localStorage.getItem('typecho_commented') === 'true';
+        
+        // 调试信息
+        console.log('Comment status check:', commentedFlag);
+        console.log('Cookies:', document.cookie);
         
         if (commentedFlag) {
             secretContents.forEach(content => {
@@ -58,8 +64,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const commentForm = document.getElementById('comment-form');
     if (commentForm) {
         commentForm.addEventListener('submit', function() {
+            // 设置本地存储标记，表示用户已评论
+            localStorage.setItem('typecho_commented', 'true');
+            
             // 延迟检查，等待评论提交完成
-            setTimeout(checkCommentStatus, 2000);
+            setTimeout(function() {
+                checkCommentStatus();
+                // 评论提交后强制刷新一次
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1000);
+            }, 2000);
         });
     }
 }); 

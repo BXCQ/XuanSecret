@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  * 
  * @package XuanSecret
  * @author 璇
- * @version 1.2.1
+ * @version 1.2.2
  * @link https://blog.ybyq.wang/
  */
 class XuanSecret_Plugin implements Typecho_Plugin_Interface
@@ -21,6 +21,7 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
         Typecho_Plugin::factory('admin/write-post.php')->option = array('XuanSecret_Plugin', 'render');
         Typecho_Plugin::factory('admin/write-page.php')->option = array('XuanSecret_Plugin', 'render');
         Typecho_Plugin::factory('Widget_Archive')->beforeRender = array('XuanSecret_Plugin', 'handleAjax');
+        Typecho_Plugin::factory('Widget_Feedback')->finishComment = array('XuanSecret_Plugin', 'afterComment');
         return _t('插件启用成功');
     }
 
@@ -91,6 +92,17 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
     }
 
     /**
+     * 评论提交后的处理
+     */
+    public static function afterComment($comment)
+    {
+        // 设置Cookie标记评论状态
+        $expire = time() + 30 * 24 * 3600; // 30天有效期
+        setcookie('typecho_commented_' . $comment->cid, 'true', $expire, '/');
+        return $comment;
+    }
+
+    /**
      * 处理Ajax请求，解析Markdown内容
      */
     public static function handleAjax($archive)
@@ -122,8 +134,14 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
             $db = Typecho_Db::get();
             $user = Typecho_Widget::widget('Widget_User');
             
+            // 检查是否是管理员或作者本人
             if ($user->hasLogin() && ($user->group == 'administrator' || $widget->authorId == $user->uid)) {
                 // 管理员或作者直接返回true
+                return true;
+            }
+            
+            // 检查Cookie中的直接标记
+            if (isset($_COOKIE['typecho_commented_' . $widget->cid]) && $_COOKIE['typecho_commented_' . $widget->cid] === 'true') {
                 return true;
             }
             
@@ -182,35 +200,10 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
                 );
             } else {
                 // 检查评论状态
-                $db = Typecho_Db::get();
-                $commentCount = 0;
+                $hasCommented = self::checkUserCommented($widget);
 
                 // 获取当前访客的评论数
                 if ($widget->is('single')) {
-                    $hasCommented = false;
-
-                    if ($user->hasLogin()) {
-                        // 如果已登录，检查用户是否评论过
-                        $commentCount = $db->fetchObject($db->select(array('COUNT(coid)' => 'count'))
-                            ->from('table.comments')
-                            ->where('cid = ?', $widget->cid)
-                            ->where('status = ? AND authorId = ?', 'approved', $user->uid))->count;
-
-                        $hasCommented = $commentCount >= intval($options->commentCount);
-                    } else {
-                        // 未登录用户，检查IP和User-Agent组合是否评论过
-                        $ip = $_SERVER['REMOTE_ADDR'];
-                        $ua = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '';
-                        $ua_hash = md5(substr($ua, 0, 255)); // 取User-Agent的哈希值
-                        
-                        $commentCount = $db->fetchObject($db->select(array('COUNT(coid)' => 'count'))
-                            ->from('table.comments')
-                            ->where('cid = ?', $widget->cid)
-                            ->where('status = ? AND ip = ?', 'approved', $ip))->count;
-
-                        $hasCommented = $commentCount >= intval($options->commentCount);
-                    }
-
                     if ($hasCommented) {
                         // 评论过的用户显示内容
                         $content = preg_replace_callback(
@@ -225,7 +218,7 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
                         // 未评论过的用户显示提示
                         $content = preg_replace_callback(
                             $pattern,
-                            function ($matches) use ($options, $widget, $commentCount, $user) {
+                            function ($matches) use ($options, $widget, $user) {
                                 // 存储原始Markdown内容，而不是解析后的HTML
                                 $originalContent = $matches[1];
                                 
