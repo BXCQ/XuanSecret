@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  * 
  * @package XuanSecret
  * @author 璇
- * @version 1.2.2
+ * @version 1.2.3
  * @link https://blog.ybyq.wang/
  */
 class XuanSecret_Plugin implements Typecho_Plugin_Interface
@@ -73,6 +73,15 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
             _t('是否允许游客无需登录即可评论')
         );
         $form->addInput($guestComment);
+        
+        $debugMode = new Typecho_Widget_Helper_Form_Element_Radio(
+            'debugMode',
+            array('0' => '禁用', '1' => '启用'),
+            '0',
+            _t('调试模式'),
+            _t('启用后将显示更多调试信息，并记录日志')
+        );
+        $form->addInput($debugMode);
     }
 
     /**
@@ -89,8 +98,29 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
         $jsUrl = Helper::options()->pluginUrl . '/XuanSecret/static/script.js';
         echo '<link rel="stylesheet" href="' . $cssUrl . '">';
         echo '<script src="' . $jsUrl . '"></script>';
+        
+        // 添加调试信息
+        $options = Helper::options()->plugin('XuanSecret');
+        if (isset($options->debugMode) && $options->debugMode == '1') {
+            echo '<script>console.log("XuanSecret: 插件已加载，调试模式已启用");</script>';
+        }
     }
-
+    
+    /**
+     * 记录调试信息
+     */
+    private static function debug($message, $data = null)
+    {
+        $options = Helper::options()->plugin('XuanSecret');
+        if (isset($options->debugMode) && $options->debugMode == '1') {
+            $logMessage = '[XuanSecret] ' . $message;
+            if ($data !== null) {
+                $logMessage .= ': ' . json_encode($data);
+            }
+            error_log($logMessage);
+        }
+    }
+    
     /**
      * 评论提交后的处理
      */
@@ -99,25 +129,45 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
         // 设置Cookie标记评论状态
         $expire = time() + 30 * 24 * 3600; // 30天有效期
         setcookie('typecho_commented_' . $comment->cid, 'true', $expire, '/');
+        setcookie('typecho_commented', 'true', $expire, '/');
+        
+        self::debug('评论已提交', array(
+            'cid' => $comment->cid,
+            'author' => $comment->author,
+            'ip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown'
+        ));
+        
         return $comment;
     }
-
+    
     /**
      * 处理Ajax请求，解析Markdown内容
      */
     public static function handleAjax($archive)
     {
         if (isset($_POST['do']) && $_POST['do'] == 'parseSecret' && isset($_POST['content'])) {
-            // 验证是否已评论
-            $hasCommented = self::checkUserCommented($archive);
+            self::debug('收到Ajax请求', $_POST);
+            
+            // 验证是否已评论或者是管理员
+            $user = Typecho_Widget::widget('Widget_User');
+            $hasCommented = self::checkUserCommented($archive) || 
+                           ($user->hasLogin() && ($user->group == 'administrator' || $archive->authorId == $user->uid));
             
             if ($hasCommented) {
                 $content = $_POST['content'];
-                $parsedContent = $archive->markdown($content);
-                echo '<div class="secret-content-inner">' . $parsedContent . '</div>';
+                try {
+                    $parsedContent = $archive->markdown($content);
+                    echo '<div class="secret-content-inner">' . $parsedContent . '</div>';
+                    self::debug('内容已解析并返回');
+                } catch (Exception $e) {
+                    self::debug('解析内容时出错', $e->getMessage());
+                    // 降级处理：直接返回原始内容
+                    echo '<div class="secret-content-inner"><pre>' . htmlspecialchars($content) . '</pre></div>';
+                }
                 exit;
             } else {
                 // 未评论用户不能解析内容
+                self::debug('用户未评论，拒绝请求');
                 echo '您需要评论后才能查看此内容';
                 exit;
             }
@@ -134,17 +184,31 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
             $db = Typecho_Db::get();
             $user = Typecho_Widget::widget('Widget_User');
             
+            // 调试模式下，始终返回true
+            if (isset($options->debugMode) && $options->debugMode == '1' && 
+                isset($_GET['xuansecret_debug']) && $_GET['xuansecret_debug'] == '1') {
+                self::debug('调试模式已启用，强制返回已评论状态');
+                return true;
+            }
+            
             // 检查是否是管理员或作者本人
             if ($user->hasLogin() && ($user->group == 'administrator' || $widget->authorId == $user->uid)) {
-                // 管理员或作者直接返回true
+                self::debug('用户是管理员或作者本人');
                 return true;
             }
             
             // 检查Cookie中的直接标记
             if (isset($_COOKIE['typecho_commented_' . $widget->cid]) && $_COOKIE['typecho_commented_' . $widget->cid] === 'true') {
+                self::debug('检测到文章特定Cookie标记');
                 return true;
             }
             
+            if (isset($_COOKIE['typecho_commented']) && $_COOKIE['typecho_commented'] === 'true') {
+                self::debug('检测到全局Cookie标记');
+                return true;
+            }
+            
+            // 检查评论数据库
             if ($user->hasLogin()) {
                 // 已登录用户
                 $commentCount = $db->fetchObject($db->select(array('COUNT(coid)' => 'count'))
@@ -152,19 +216,33 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
                     ->where('cid = ?', $widget->cid)
                     ->where('status = ? AND authorId = ?', 'approved', $user->uid))->count;
                     
-                return $commentCount >= intval($options->commentCount);
+                $hasCommented = $commentCount >= intval($options->commentCount);
+                self::debug('已登录用户评论检查', array(
+                    'uid' => $user->uid,
+                    'commentCount' => $commentCount,
+                    'required' => intval($options->commentCount),
+                    'hasCommented' => $hasCommented
+                ));
+                return $hasCommented;
             } else {
                 // 未登录用户
-                $ip = $_SERVER['REMOTE_ADDR'];
+                $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
                 $commentCount = $db->fetchObject($db->select(array('COUNT(coid)' => 'count'))
                     ->from('table.comments')
                     ->where('cid = ?', $widget->cid)
                     ->where('status = ? AND ip = ?', 'approved', $ip))->count;
                     
-                return $commentCount >= intval($options->commentCount);
+                $hasCommented = $commentCount >= intval($options->commentCount);
+                self::debug('未登录用户评论检查', array(
+                    'ip' => $ip,
+                    'commentCount' => $commentCount,
+                    'required' => intval($options->commentCount),
+                    'hasCommented' => $hasCommented
+                ));
+                return $hasCommented;
             }
         } catch (Exception $e) {
-            error_log('XuanSecret Plugin Error: ' . $e->getMessage());
+            self::debug('检查评论状态时出错', $e->getMessage());
             return false;
         }
     }
@@ -186,66 +264,65 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
 
             // 获取当前用户对象
             $user = Typecho_Widget::widget('Widget_User');
-
+            
             // 检查是否是管理员或作者本人
-            if ($user->hasLogin() && ($user->group == 'administrator' || $widget->authorId == $user->uid)) {
-                // 管理员或作者直接显示内容
+            $isAdminOrAuthor = $user->hasLogin() && ($user->group == 'administrator' || $widget->authorId == $user->uid);
+            
+            // 检查评论状态
+            $hasCommented = $isAdminOrAuthor || self::checkUserCommented($widget);
+
+            // 根据用户状态处理内容
+            if ($widget->is('single')) {
+                if ($hasCommented) {
+                    // 评论过的用户显示内容
+                    $content = preg_replace_callback(
+                        $pattern,
+                        function ($matches) use ($widget) {
+                            $parsedContent = $widget->markdown($matches[1]);
+                            return '<div class="secret-content revealed">' . $parsedContent . '</div>';
+                        },
+                        $content
+                    );
+                } else {
+                    // 未评论过的用户显示提示
+                    $content = preg_replace_callback(
+                        $pattern,
+                        function ($matches) use ($options, $widget, $user) {
+                            // 存储原始Markdown内容，而不是解析后的HTML
+                            $originalContent = $matches[1];
+                            
+                            $preview = '';
+                            if ($options->enablePreview == '1') {
+                                // 预览使用解析后的内容
+                                $parsedContent = $widget->markdown($originalContent);
+                                $previewText = mb_substr(strip_tags($parsedContent), 0, 30);
+                                $preview = '<div class="secret-preview">' . $previewText . '...</div>';
+                            }
+
+                            // 根据配置决定是否显示登录链接
+                            $loginTip = '';
+                            if (!$user->hasLogin() && $options->guestComment == '0') {
+                                $loginTip = ' <a href="' . Helper::options()->loginUrl . '">点击登录</a>';
+                            }
+
+                            return '<div class="secret-content">
+                                    <div class="secret-tip">' . $options->tipText . $loginTip . '</div>
+                                    ' . $preview . '
+                                    <div class="hidden-content" style="display:none" data-content="' . htmlspecialchars($originalContent, ENT_QUOTES) . '"></div>
+                                </div>';
+                        },
+                        $content
+                    );
+                }
+            } else {
+                // 非单篇文章页面，将隐藏内容替换为提示
                 $content = preg_replace_callback(
                     $pattern,
-                    function ($matches) use ($widget) {
-                        $parsedContent = $widget->markdown($matches[1]);
-                        return '<div class="secret-content revealed">' . $parsedContent . '</div>';
+                    function ($matches) use ($options) {
+                        return '<div class="secret-content"><div class="secret-tip">' . $options->tipText . '</div></div>';
                     },
                     $content
                 );
-            } else {
-                // 检查评论状态
-                $hasCommented = self::checkUserCommented($widget);
-
-                // 获取当前访客的评论数
-                if ($widget->is('single')) {
-                    if ($hasCommented) {
-                        // 评论过的用户显示内容
-                        $content = preg_replace_callback(
-                            $pattern,
-                            function ($matches) use ($widget) {
-                                $parsedContent = $widget->markdown($matches[1]);
-                                return '<div class="secret-content revealed">' . $parsedContent . '</div>';
-                            },
-                            $content
-                        );
-                    } else {
-                        // 未评论过的用户显示提示
-                        $content = preg_replace_callback(
-                            $pattern,
-                            function ($matches) use ($options, $widget, $user) {
-                                // 存储原始Markdown内容，而不是解析后的HTML
-                                $originalContent = $matches[1];
-                                
-                                $preview = '';
-                                if ($options->enablePreview == '1') {
-                                    // 预览使用解析后的内容
-                                    $parsedContent = $widget->markdown($originalContent);
-                                    $previewText = mb_substr(strip_tags($parsedContent), 0, 30);
-                                    $preview = '<div class="secret-preview">' . $previewText . '...</div>';
-                                }
-
-                                // 根据配置决定是否显示登录链接
-                                $loginTip = '';
-                                if (!$user->hasLogin() && $options->guestComment == '0') {
-                                    $loginTip = ' <a href="' . Helper::options()->loginUrl . '">点击登录</a>';
-                                }
-
-                                return '<div class="secret-content">
-                                        <div class="secret-tip">' . $options->tipText . $loginTip . '</div>
-                                        ' . $preview . '
-                                        <div class="hidden-content" style="display:none" data-content="' . htmlspecialchars($originalContent, ENT_QUOTES) . '"></div>
-                                    </div>';
-                            },
-                            $content
-                        );
-                    }
-                }
             }
 
             // 恢复正常显示的[secret]文本
@@ -258,7 +335,7 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
             return $content;
         } catch (Exception $e) {
             // 记录错误但不中断页面渲染
-            error_log('XuanSecret Plugin Error: ' . $e->getMessage());
+            self::debug('解析内容时出错', $e->getMessage());
             return $content;
         }
     }
