@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  * 
  * @package XuanSecret
  * @author 璇
- * @version 1.2.4
+ * @version 1.2.5
  * @link https://blog.ybyq.wang/
  */
 class XuanSecret_Plugin implements Typecho_Plugin_Interface
@@ -128,13 +128,31 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
     {
         // 设置Cookie标记评论状态，只对当前文章有效
         $expire = time() + 30 * 24 * 3600; // 30天有效期
-        setcookie('typecho_commented_' . $comment->cid, 'true', $expire, '/');
         
-        self::debug('评论已提交', array(
+        // 使用更简单的Cookie名称
+        $cookieName = 'xuansecret_commented_' . $comment->cid;
+        
+        // 设置Cookie，确保路径正确
+        setcookie($cookieName, 'true', $expire, '/', '', false, false);
+        
+        // 记录调试信息
+        self::debug('评论已提交，设置Cookie', array(
+            'cookie_name' => $cookieName,
             'cid' => $comment->cid,
             'author' => $comment->author,
-            'ip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown'
+            'ip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown',
+            'expire' => date('Y-m-d H:i:s', $expire)
         ));
+        
+        // 直接在页面上输出JavaScript来设置localStorage
+        echo '<script>
+            try {
+                localStorage.setItem("xuansecret_commented_' . $comment->cid . '", "true");
+                console.log("XuanSecret: localStorage已设置，文章ID: ' . $comment->cid . '");
+            } catch(e) {
+                console.error("XuanSecret: 设置localStorage失败", e);
+            }
+        </script>';
         
         return $comment;
     }
@@ -196,9 +214,14 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
                 return true;
             }
             
-            // 检查Cookie中的文章特定标记
+            // 检查Cookie中的文章特定标记 - 同时检查新旧两种Cookie名称
+            if (isset($_COOKIE['xuansecret_commented_' . $widget->cid]) && $_COOKIE['xuansecret_commented_' . $widget->cid] === 'true') {
+                self::debug('检测到新版文章特定Cookie标记');
+                return true;
+            }
+            
             if (isset($_COOKIE['typecho_commented_' . $widget->cid]) && $_COOKIE['typecho_commented_' . $widget->cid] === 'true') {
-                self::debug('检测到文章特定Cookie标记');
+                self::debug('检测到旧版文章特定Cookie标记');
                 return true;
             }
             

@@ -45,11 +45,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // 检查当前文章的评论状态
         const commentedCookies = document.cookie.split(';').some(item => {
             const trimmed = item.trim();
-            return currentPostId && trimmed.indexOf('typecho_commented_' + currentPostId + '=') === 0;
+            // 检查新旧两种Cookie名称
+            return (currentPostId && trimmed.indexOf('xuansecret_commented_' + currentPostId + '=') === 0) ||
+                   (currentPostId && trimmed.indexOf('typecho_commented_' + currentPostId + '=') === 0);
         });
         
         // 检查localStorage中的文章特定标记
-        const hasLocalStorage = currentPostId && localStorage.getItem('typecho_commented_' + currentPostId) === 'true';
+        const hasLocalStorage = (currentPostId && localStorage.getItem('xuansecret_commented_' + currentPostId) === 'true') ||
+                               (currentPostId && localStorage.getItem('typecho_commented_' + currentPostId) === 'true');
         
         const hasCommented = commentedCookies || hasLocalStorage;
         
@@ -161,7 +164,16 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!currentPostId) return;
         
         // 设置localStorage标记，只对当前文章有效
-        localStorage.setItem('typecho_commented_' + currentPostId, 'true');
+        localStorage.setItem('xuansecret_commented_' + currentPostId, 'true');
+        
+        // 设置Cookie标记
+        try {
+            const expire = new Date();
+            expire.setTime(expire.getTime() + 30 * 24 * 60 * 60 * 1000); // 30天
+            document.cookie = 'xuansecret_commented_' + currentPostId + '=true; expires=' + expire.toUTCString() + '; path=/';
+        } catch(e) {
+            console.error('XuanSecret: 设置Cookie失败', e);
+        }
         
         console.log('XuanSecret: 已设置评论标记，文章ID:', currentPostId);
     }
