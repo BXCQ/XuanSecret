@@ -1,4 +1,3 @@
-
 一个 Typecho 文章内容隐藏插件，支持隐藏文字、图片、附件等内容，访客评论后即可查看。
 
 ## 功能特点
@@ -12,26 +11,54 @@
 - 支持内容预览功能
 - 响应式设计
 - 编辑器快捷插入按钮
+![][1]
 
 ## 下载地址
+[secret]
+[网盘下载][2]
+[/secret]
 
 ## 使用方法
 1. 下载插件，将插件上传到 `/usr/plugins` 目录下
-2. 后台启用插件
+2. 后台启用插件，注意文件名为`XuanSecret`
 3. 在文章编辑时可以：
-   - 使用编辑器右侧的"插入隐藏内容"按钮
-   - 或手动输入短代码：`[secret]这里是隐藏的内容[/secret]`
-
+   - 使用编辑器下面的"插入隐藏内容"按钮
+     ![][3]
+   - 或手动输入短代码：
+     ![][4]
 ### 使用示例
-这是普通文本
+这是普通文本：
 [secret]
 这是隐藏的文字内容
-这是隐藏的图片：!图片描述
-这是隐藏的附件：下载文件
 [/secret]
-这又是普通文本
+
+这是一张图片：
+[secret]
+这是一个隐藏的图片：![][5]
+[/secret]
+
+这是一个超链接：
+[secret]
+[https://blog.ybyq.wang/archives/525.html][6]
+[/secret]
 
 ## 最新更新
+
+### 版本 1.2.1
+1. **内容处理优化**
+   - 改进Markdown内容处理方式，避免HTML转义问题
+   - 使用Ajax异步加载隐藏内容，提升加载性能
+   - 修复特殊字符和HTML标签显示问题
+
+2. **安全性增强**
+   - 改进用户身份验证机制，结合IP和User-Agent识别
+   - 增加服务端验证，防止未授权访问隐藏内容
+   - 完善异常处理，提高插件稳定性
+
+3. **兼容性提升**
+   - 优化JavaScript代码，提高浏览器兼容性
+   - 添加降级处理机制，确保关键功能可用
+   - 改进Cookie检测逻辑，更准确识别评论状态
 
 ### 版本 1.2.0
 1. **重大更新：简化设计**
@@ -77,22 +104,22 @@
 新版本的设计遵循以下原则：
 
 - **简洁性**：去除复杂的选择，专注于核心功能
-- **一致性**：统一的视觉风格，减少用户困惑  
 - **可用性**：清晰的视觉层次和良好的可读性
 - **现代感**：使用现代CSS特性，如渐变和阴影
 - **响应式**：在所有设备上都有良好的显示效果
 
 
-## 技术支持
-
-如遇问题，请通过以下方式获取帮助：
-
-1. 访问作者博客：https://blog.ybyq.wang/
-2. 在评论区留言
-
 ## 版权信息
 
 - 作者：璇
 - 博客：https://blog.ybyq.wang/
-- 版本：1.2.0
+- 版本：1.2.1
 - 开源协议：MIT License
+
+
+  [1]: https://static.blog.ybyq.wang/usr/uploads/2025/05/31/2025-05-31T14:31:21.png?x-oss-process=style/shuiyin
+  [2]: https://pan.xunlei.com/s/VORjW73qlPhdwvon6DJnx2wJA1?pwd=xjkw#
+  [3]: https://static.blog.ybyq.wang/usr/uploads/2025/06/19/2025-06-18T16:09:26.png?x-oss-process=style/shuiyin
+  [4]: https://static.blog.ybyq.wang/usr/uploads/2025/06/19/2025-06-18T16:10:16.png?x-oss-process=style/shuiyin
+  [5]: https://static.blog.ybyq.wang/usr/uploads/2025/06/19/2025-06-18T16:20:14.png?x-oss-process=style/shuiyin
+  [6]: https://blog.ybyq.wang/archives/525.html

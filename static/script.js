@@ -5,11 +5,32 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const hiddenContent = content.querySelector('.hidden-content');
             if (hiddenContent) {
-                // 直接设置内容，不使用动画
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(hiddenContent.innerHTML, 'text/html');
-                content.innerHTML = doc.body.innerHTML;
-                content.classList.add('revealed');
+                // 获取原始markdown内容
+                const originalMarkdown = hiddenContent.getAttribute('data-content');
+                if (originalMarkdown) {
+                    // 使用Ajax请求服务器解析Markdown
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', window.location.href, true);
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === 4 && xhr.status === 200) {
+                            try {
+                                // 将解析后的内容放入容器
+                                content.innerHTML = xhr.responseText;
+                                content.classList.add('revealed');
+                            } catch (e) {
+                                console.error('Error processing response:', e);
+                                // 降级处理：直接显示原始内容
+                                content.textContent = decodeURIComponent(originalMarkdown);
+                                content.classList.add('revealed');
+                            }
+                        }
+                    };
+                    xhr.send('do=parseSecret&content=' + encodeURIComponent(originalMarkdown));
+                } else {
+                    console.error('No content data found');
+                }
             }
         } catch (error) {
             console.error('Error revealing content:', error);
@@ -17,15 +38,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function checkCommentStatus() {
-        // 检查是否已登录用户
-        if (document.cookie.indexOf('typecho_user_author') !== -1) {
+        // 检查是否已评论用户
+        const commentedFlag = document.cookie.indexOf('typecho_comment_author') !== -1;
+        
+        if (commentedFlag) {
             secretContents.forEach(content => {
                 // 如果内容还没有被显示，则显示它
                 if (!content.classList.contains('revealed')) {
-                    const hiddenContent = content.querySelector('.hidden-content');
-                    if (hiddenContent) {
-                        revealContent(content);
-                    }
+                    revealContent(content);
                 }
             });
         }
@@ -38,6 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const commentForm = document.getElementById('comment-form');
     if (commentForm) {
         commentForm.addEventListener('submit', function() {
+            // 延迟检查，等待评论提交完成
             setTimeout(checkCommentStatus, 2000);
         });
     }
