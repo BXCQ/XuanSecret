@@ -73,15 +73,6 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
             _t('是否允许游客无需登录即可评论')
         );
         $form->addInput($guestComment);
-        
-        $debugMode = new Typecho_Widget_Helper_Form_Element_Radio(
-            'debugMode',
-            array('0' => '禁用', '1' => '启用'),
-            '0',
-            _t('调试模式'),
-            _t('启用后将显示更多调试信息，并记录日志')
-        );
-        $form->addInput($debugMode);
     }
 
     /**
@@ -98,27 +89,6 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
         $jsUrl = Helper::options()->pluginUrl . '/XuanSecret/static/script.js';
         echo '<link rel="stylesheet" href="' . $cssUrl . '">';
         echo '<script src="' . $jsUrl . '"></script>';
-        
-        // 添加调试信息
-        $options = Helper::options()->plugin('XuanSecret');
-        if (isset($options->debugMode) && $options->debugMode == '1') {
-            echo '<script>console.log("XuanSecret: 插件已加载，调试模式已启用");</script>';
-        }
-    }
-    
-    /**
-     * 记录调试信息
-     */
-    private static function debug($message, $data = null)
-    {
-        $options = Helper::options()->plugin('XuanSecret');
-        if (isset($options->debugMode) && $options->debugMode == '1') {
-            $logMessage = '[XuanSecret] ' . $message;
-            if ($data !== null) {
-                $logMessage .= ': ' . json_encode($data);
-            }
-            error_log($logMessage);
-        }
     }
     
     /**
@@ -135,23 +105,11 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
         // 设置Cookie，确保路径正确
         setcookie($cookieName, 'true', $expire, '/', '', false, false);
         
-        // 记录调试信息
-        self::debug('评论已提交，设置Cookie', array(
-            'cookie_name' => $cookieName,
-            'cid' => $comment->cid,
-            'author' => $comment->author,
-            'ip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : 'unknown',
-            'expire' => date('Y-m-d H:i:s', $expire)
-        ));
-        
         // 直接在页面上输出JavaScript来设置localStorage
         echo '<script>
             try {
                 localStorage.setItem("xuansecret_commented_' . $comment->cid . '", "true");
-                console.log("XuanSecret: localStorage已设置，文章ID: ' . $comment->cid . '");
-            } catch(e) {
-                console.error("XuanSecret: 设置localStorage失败", e);
-            }
+            } catch(e) {}
         </script>';
         
         return $comment;
@@ -163,8 +121,6 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
     public static function handleAjax($archive)
     {
         if (isset($_POST['do']) && $_POST['do'] == 'parseSecret' && isset($_POST['content'])) {
-            self::debug('收到Ajax请求', $_POST);
-            
             // 验证是否已评论或者是管理员
             $user = Typecho_Widget::widget('Widget_User');
             $hasCommented = self::checkUserCommented($archive) || 
@@ -175,16 +131,13 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
                 try {
                     $parsedContent = $archive->markdown($content);
                     echo '<div class="secret-content-inner">' . $parsedContent . '</div>';
-                    self::debug('内容已解析并返回');
                 } catch (Exception $e) {
-                    self::debug('解析内容时出错', $e->getMessage());
                     // 降级处理：直接返回原始内容
                     echo '<div class="secret-content-inner"><pre>' . htmlspecialchars($content) . '</pre></div>';
                 }
                 exit;
             } else {
                 // 未评论用户不能解析内容
-                self::debug('用户未评论，拒绝请求');
                 echo '您需要评论后才能查看此内容';
                 exit;
             }
@@ -201,27 +154,17 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
             $db = Typecho_Db::get();
             $user = Typecho_Widget::widget('Widget_User');
             
-            // 调试模式下，始终返回true
-            if (isset($options->debugMode) && $options->debugMode == '1' && 
-                isset($_GET['xuansecret_debug']) && $_GET['xuansecret_debug'] == '1') {
-                self::debug('调试模式已启用，强制返回已评论状态');
-                return true;
-            }
-            
             // 检查是否是管理员或作者本人
             if ($user->hasLogin() && ($user->group == 'administrator' || $widget->authorId == $user->uid)) {
-                self::debug('用户是管理员或作者本人');
                 return true;
             }
             
             // 检查Cookie中的文章特定标记 - 同时检查新旧两种Cookie名称
             if (isset($_COOKIE['xuansecret_commented_' . $widget->cid]) && $_COOKIE['xuansecret_commented_' . $widget->cid] === 'true') {
-                self::debug('检测到新版文章特定Cookie标记');
                 return true;
             }
             
             if (isset($_COOKIE['typecho_commented_' . $widget->cid]) && $_COOKIE['typecho_commented_' . $widget->cid] === 'true') {
-                self::debug('检测到旧版文章特定Cookie标记');
                 return true;
             }
             
@@ -234,12 +177,6 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
                     ->where('status = ? AND authorId = ?', 'approved', $user->uid))->count;
                     
                 $hasCommented = $commentCount >= intval($options->commentCount);
-                self::debug('已登录用户评论检查', array(
-                    'uid' => $user->uid,
-                    'commentCount' => $commentCount,
-                    'required' => intval($options->commentCount),
-                    'hasCommented' => $hasCommented
-                ));
                 return $hasCommented;
             } else {
                 // 未登录用户
@@ -250,16 +187,9 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
                     ->where('status = ? AND ip = ?', 'approved', $ip))->count;
                     
                 $hasCommented = $commentCount >= intval($options->commentCount);
-                self::debug('未登录用户评论检查', array(
-                    'ip' => $ip,
-                    'commentCount' => $commentCount,
-                    'required' => intval($options->commentCount),
-                    'hasCommented' => $hasCommented
-                ));
                 return $hasCommented;
             }
         } catch (Exception $e) {
-            self::debug('检查评论状态时出错', $e->getMessage());
             return false;
         }
     }
@@ -351,8 +281,6 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
 
             return $content;
         } catch (Exception $e) {
-            // 记录错误但不中断页面渲染
-            self::debug('解析内容时出错', $e->getMessage());
             return $content;
         }
     }
