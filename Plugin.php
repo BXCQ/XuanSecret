@@ -6,7 +6,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  * 
  * @package XuanSecret
  * @author 璇
- * @version 1.2.3
+ * @version 1.2.4
  * @link https://blog.ybyq.wang/
  */
 class XuanSecret_Plugin implements Typecho_Plugin_Interface
@@ -126,10 +126,9 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
      */
     public static function afterComment($comment)
     {
-        // 设置Cookie标记评论状态
+        // 设置Cookie标记评论状态，只对当前文章有效
         $expire = time() + 30 * 24 * 3600; // 30天有效期
         setcookie('typecho_commented_' . $comment->cid, 'true', $expire, '/');
-        setcookie('typecho_commented', 'true', $expire, '/');
         
         self::debug('评论已提交', array(
             'cid' => $comment->cid,
@@ -197,14 +196,9 @@ class XuanSecret_Plugin implements Typecho_Plugin_Interface
                 return true;
             }
             
-            // 检查Cookie中的直接标记
+            // 检查Cookie中的文章特定标记
             if (isset($_COOKIE['typecho_commented_' . $widget->cid]) && $_COOKIE['typecho_commented_' . $widget->cid] === 'true') {
                 self::debug('检测到文章特定Cookie标记');
-                return true;
-            }
-            
-            if (isset($_COOKIE['typecho_commented']) && $_COOKIE['typecho_commented'] === 'true') {
-                self::debug('检测到全局Cookie标记');
                 return true;
             }
             

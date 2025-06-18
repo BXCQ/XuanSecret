@@ -3,28 +3,61 @@ document.addEventListener('DOMContentLoaded', function () {
     const secretContents = document.querySelectorAll('.secret-content');
     if (!secretContents.length) return;
 
+    // 获取当前文章ID
+    let currentPostId = '';
+    try {
+        // 尝试从URL中获取文章ID
+        const urlPath = window.location.pathname;
+        const matches = urlPath.match(/\/archives\/(\d+)/);
+        if (matches && matches[1]) {
+            currentPostId = matches[1];
+        }
+        
+        // 如果URL中没有，尝试从其他元素获取
+        if (!currentPostId) {
+            const articleElement = document.querySelector('article[data-cid]');
+            if (articleElement) {
+                currentPostId = articleElement.getAttribute('data-cid');
+            }
+        }
+        
+        // 最后尝试从评论表单获取
+        if (!currentPostId) {
+            const commentForm = document.getElementById('comment-form');
+            if (commentForm) {
+                const cidInput = commentForm.querySelector('input[name="parent"]');
+                if (cidInput) {
+                    currentPostId = cidInput.value;
+                }
+            }
+        }
+        
+        console.log('XuanSecret: 当前文章ID:', currentPostId);
+    } catch (e) {
+        console.error('XuanSecret: 获取文章ID失败', e);
+    }
+
     // 调试信息
     console.log('XuanSecret: 找到', secretContents.length, '个隐藏内容');
     
-    // 检查是否已经评论过
+    // 检查是否已经评论过当前文章
     function checkCommentStatus() {
-        // 多种方式检测评论状态
+        // 检查当前文章的评论状态
         const commentedCookies = document.cookie.split(';').some(item => {
             const trimmed = item.trim();
-            return trimmed.indexOf('typecho_comment_author=') === 0 || 
-                   trimmed.indexOf('typecho_user_author=') === 0 ||
-                   trimmed.indexOf('typecho_commented_') === 0;
+            return currentPostId && trimmed.indexOf('typecho_commented_' + currentPostId + '=') === 0;
         });
         
-        const hasLocalStorage = localStorage.getItem('typecho_commented') === 'true';
-        const hasCommentForm = document.getElementById('comment-form');
+        // 检查localStorage中的文章特定标记
+        const hasLocalStorage = currentPostId && localStorage.getItem('typecho_commented_' + currentPostId) === 'true';
+        
         const hasCommented = commentedCookies || hasLocalStorage;
         
         // 调试信息
         console.log('XuanSecret: 评论状态检查', {
+            currentPostId,
             commentedCookies,
             hasLocalStorage,
-            hasCommentForm,
             hasCommented,
             cookies: document.cookie
         });
@@ -123,16 +156,14 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
-    // 设置评论状态标记
+    // 设置评论状态标记，只对当前文章有效
     function setCommentedFlag() {
-        localStorage.setItem('typecho_commented', 'true');
+        if (!currentPostId) return;
         
-        // 设置一个通用的cookie
-        const expire = new Date();
-        expire.setTime(expire.getTime() + 30 * 24 * 60 * 60 * 1000); // 30天
-        document.cookie = 'typecho_commented=true; expires=' + expire.toUTCString() + '; path=/';
+        // 设置localStorage标记，只对当前文章有效
+        localStorage.setItem('typecho_commented_' + currentPostId, 'true');
         
-        console.log('XuanSecret: 已设置评论标记');
+        console.log('XuanSecret: 已设置评论标记，文章ID:', currentPostId);
     }
     
     // 监听评论表单提交
