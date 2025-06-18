@@ -148,7 +148,7 @@
 - 博客：https://blog.ybyq.wang/
 - 版本：1.2.5
 - 开源协议：MIT License
-
+- 原插件地址：https://8ww.fun/2024/11/18/184.html
 
   [1]: https://static.blog.ybyq.wang/usr/uploads/2025/05/31/2025-05-31T14:31:21.png?x-oss-process=style/shuiyin
   [2]: https://pan.xunlei.com/s/VORjW73qlPhdwvon6DJnx2wJA1?pwd=xjkw#
