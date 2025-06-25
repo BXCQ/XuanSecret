@@ -5,7 +5,7 @@
 - 支持隐藏任意内容（文字、图片、附件、链接等）
 - 管理员和文章作者可直接查看隐藏内容
 - 评论过的用户永久可见该文章的隐藏内容
-- **支持游客无需登录**即可评论
+- **不强制游客必须登录后**才能评论
 - 自定义提示文本
 - 支持设置所需评论次数
 - 支持内容预览功能
@@ -142,13 +142,7 @@
    - 在浏览器中按Alt+S快捷键尝试强制显示内容
    - 在URL末尾添加`?xuansecret_debug=1`参数
 
-## 版权信息
 
-- 作者：璇
-- 博客：https://blog.ybyq.wang/
-- 版本：1.2.5
-- 开源协议：MIT License
-- 原插件地址：https://8ww.fun/2024/11/18/184.html
 
   [1]: https://static.blog.ybyq.wang/usr/uploads/2025/05/31/2025-05-31T14:31:21.png?x-oss-process=style/shuiyin
   [2]: https://pan.xunlei.com/s/VORjW73qlPhdwvon6DJnx2wJA1?pwd=xjkw#
