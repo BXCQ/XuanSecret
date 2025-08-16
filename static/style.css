@@ -1,0 +1,187 @@
+/* WuweiSecret Plugin - 优化固定样式 */
+
+/* 基础样式 */
+.secret-content {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    /* border: 1px solid #e9ecef; */
+    border-radius: 12px;
+    margin: 20px 0;
+    padding: 25px;
+    position: relative;
+    /* box-shadow: 0 4px 15px rgba(0,0,0,0.08); */
+    transition: all 0.3s ease;
+}
+
+.secret-content:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+/* 提示文本样式 */
+.secret-content .secret-tip {
+    color: #495057;
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    text-align: center;
+    line-height: 1.6;
+}
+
+.secret-content .secret-tip::before {
+    content: "🔒";
+    margin-right: 8px;
+    font-size: 18px;
+}
+
+/* 登录链接样式 */
+.secret-content .secret-tip a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: rgba(0, 123, 255, 0.1);
+    transition: all 0.3s ease;
+    margin-left: 8px;
+}
+
+.secret-content .secret-tip a:hover {
+    background: rgba(0, 123, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+/* 预览内容样式 */
+.secret-content .secret-preview {
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    color: #6c757d;
+    font-style: italic;
+    margin: 15px 0;
+    text-align: left;
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+}
+
+.secret-content .secret-preview::before {
+    content: "👀 预览：";
+    font-weight: 600;
+    color: #495057;
+    font-style: normal;
+}
+
+/* 显示内容样式 */
+.secret-content.revealed {
+    background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+    /* border-color: #28a745; */
+    text-align: left;
+}
+
+.secret-content.revealed::before {
+    content: "✅";
+    position: absolute;
+    top: -8px;
+    right: 15px;
+    font-size: 20px;
+    background: white;
+    padding: 4px 8px;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.secret-content.revealed img {
+    max-width: 100%;
+    height: auto;
+    margin: 10px 0;
+    border-radius: 6px;
+}
+
+.secret-content.revealed p {
+    margin: 1em 0;
+    line-height: 1.7;
+    color: #333;
+}
+
+.secret-content.revealed h1,
+.secret-content.revealed h2,
+.secret-content.revealed h3,
+.secret-content.revealed h4,
+.secret-content.revealed h5,
+.secret-content.revealed h6 {
+    margin: 1.2em 0 0.6em;
+    color: #2c3e50;
+}
+
+.secret-content.revealed ul,
+.secret-content.revealed ol {
+    padding-left: 2em;
+    margin: 1em 0;
+}
+
+.secret-content.revealed blockquote {
+    border-left: 4px solid #28a745;
+    padding-left: 15px;
+    margin: 15px 0;
+    color: #555;
+    font-style: italic;
+}
+
+/* 不要覆盖主题原有的代码样式，让代码块保持原有格式 */
+
+/* 游客评论提示样式 */
+.secret-content .guest-comment-tip {
+    background: rgba(227, 242, 253, 0.9);
+    border: 1px solid #bbdefb;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 15px 0;
+    color: #1976d2;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .secret-content {
+        padding: 20px;
+        margin: 15px 0;
+        border-radius: 10px;
+    }
+
+    .secret-content .secret-tip {
+        font-size: 14px;
+    }
+
+    .secret-content .secret-preview {
+        padding: 12px;
+        font-size: 14px;
+    }
+
+    .secret-content .guest-comment-tip {
+        font-size: 13px;
+        padding: 10px;
+    }
+
+    .secret-content.revealed::before {
+        font-size: 18px;
+        top: -6px;
+        right: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .secret-content {
+        padding: 15px;
+        margin: 10px 0;
+    }
+
+    .secret-content .secret-tip {
+        font-size: 13px;
+    }
+
+    .secret-content .secret-tip::before {
+        font-size: 16px;
+    }
+}
