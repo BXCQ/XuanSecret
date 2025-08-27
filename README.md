@@ -183,29 +183,15 @@ WHERE cid = ? AND status = 'approved' AND ip = ?
 
 更多问题解决方案请查看 [详细文档](bog.md)
 
-## 🤝 贡献指南
-
-欢迎提交 Issue 和 Pull Request！
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 打开 Pull Request
 
 ## 📄 开源协议
 
 本项目采用 [MIT License](LICENSE) 开源协议。
 
-## 🙏 致谢
 
-感谢所有为本项目做出贡献的开发者和用户！
+## 最后
 
-## 📞 技术支持
-
-- **官方博客**：[https://blog.ybyq.wang/](https://blog.ybyq.wang/)
-- **详细文档**：[完整使用指南](bog.md)
-- **问题反馈**：[GitHub Issues](https://github.com/BXCQ/XuanSecret/issues)
+- **博客**：[https://blog.ybyq.wang/](https://blog.ybyq.wang/)
 
 ---
 
